@@ -2,7 +2,6 @@ import urllib2
 from bs4 import BeautifulSoup
 import string
 import sys
-from collections import defaultdict
 
 sys.path.append('/Users/aduarte/Desktop/MITIE/mitielib')
 from mitie import *
@@ -11,105 +10,15 @@ mainWikiURL = "https://en.wikipedia.org{}"
 template_wikiURL = "/wiki/{}"
 
 GLOBAL_BANDS = ["10,000 Maniacs",
-         "Belly (band)",
-         "Black Star (rap duo)",
-         "Bob Marley and the Wailers",
-         "The Breeders",
-         "Lupe Fiasco",
-         "Run the Jewels",
-         "Talking Heads",
-         "Throwing Muses",
-         "Tom Tom Club"]
-
-d = defaultdict(list)
-
-# people = ["Dennis Drew",
-#           "Steve Gustafson",
-#           "Jerry Augustyniak",
-#           "Mary Ramsey",
-#           #"Jeff Erickson",
-#           "Rob Buck",
-#           "John Lombardo",
-#           #"Chet Cardinale",
-#           #"Teri Newhouse",
-#           "Natalie Merchant",
-#           #"Tim Edborg",
-#           #"Jim Colavito",
-#           #"Debbie Heverly",
-#           #"Duane Calhoun",
-#           #"Bob \"O'Matic\" Wachter",
-#           #"Jim Foti",
-#           "Oskar Saville"] + \
-#          ["Tanya Donelly",
-#           #"Thomas Gorman",
-#           #"Chris Gorman",
-#           #"Fred Abong",
-#           "Gail Greenwood"] + \
-#          ["Mos Def",
-#           "Talib Kweli"] + \
-#          ["Bob Marley",
-#           "Peter Tosh",
-#           "Bunny Wailer",
-#           "Junior Braithwaite",
-#           "Cherry Smith",
-#           "Beverley Kelso",
-#           "Constantine Walker",
-#           "Aston Barrett",
-#           "Carlton Barrett",
-#           "Earl Lindo",
-#           "Tyrone Downie",
-#           "Rita Marley",
-#           "Marcia Griffiths",
-#           "Judy Mowatt",
-#           "Al Anderson",
-#           "Alvin Patterson",
-#           "Earl \"Chinna\" Smith",
-#           "Donald Kinsey",
-#           "Junior Marvin"] + \
-#          ["Kim Deal",
-#           "Kelley Deal",
-#           "Josephine Wiggs",
-#           "Jim Macpherson",
-#           "Jose Medeles",
-#           #"Mando Lopez",
-#           "Cheryl Lyndsey",
-#           "Tanya Donelly",
-#           "Carrie Bradley",
-#           #"Richard Presley",
-#           #"Nate Farley",
-#           "Britt Walford",
-#           "Jon Mattock"] + \
-#          ["El-P",
-#           "Killer Mike"] + \
-#          ["David Byrne",
-#           "Chris Frantz",
-#           "Tina Weymouth",
-#           "Jerry Harrison"] + \
-#          ["Kristin Hersh",
-#           "David Narcizo",
-#           "Bernard Georges",
-#           #"Leslie Langston",
-#           #"Fred Abong",
-#           #"Elaine Adamedes",
-#           #"Becca Blumen",
-#           "Tanya Donelly"] + \
-#          ["Chris Frantz",
-#           "Tina Weymouth",
-#           #"Bruce Martin",
-#           "Victoria Clamp",
-#           "Pablo Martin",
-#           "Adrian Belew",
-#           #"Monte Browne",
-#           "Tyrone Downie",
-#           #"Mark Roule",
-#           #"Gary Pozner",
-#           #"Steve Scales",
-#           "Steven Stanley",
-#           "Alex Weir",
-#           #"Mystic Bowie",
-#           #"Laura Weymouth",
-#           "Charles Pettigrew",
-#           "Wally Badarou"]
+                "Belly", # (band)
+                "Black Star", # (rap duo)
+                "Bob Marley and the Wailers",
+                "The Breeders",
+                "Lupe Fiasco",
+                "Run the Jewels",
+                "Talking Heads",
+                "Throwing Muses",
+                "Tom Tom Club"]
 
 
 def parseArgs():
@@ -216,42 +125,54 @@ def main():
     for band in GLOBAL_BANDS:
         band_token = tokenize(band)
         members = []
-        # print "GETTING BANDS"
-        # print "band", band
+        print "GETTING BANDS"
+        print "band", band
         # read html from local file
         filename = cachePath + makeFilename(band)
-        # print "\tfilename", filename
+        print "\tfilename", filename
         html = getHtmlFromFilename(filename)
         # get list of members
         members = getTableMembers(html)
         members_token = [tokenize(m) for m in members]
-        # print "\tmembers", members
+        print "\tmembers", members
         # get phrases from wikipedia text
         phrases = getTextFromHtml(html)
-        # for each phrase, tokenize and find positions of <band> + <members>
+        # for each phrase,
         for phrase in phrases:
+            # tokenize
             tokens = tokenize(phrase.text)
+            # find positions of <band> + <members>
             # ...
-        # ...
+            # add binary relations
+            # ...
         # iterate through each member page saved locally
         for member in members:
+            member_token = tokenize(member)
             bands = []
-            # print "\tGETTING MEMBERS"
-            # print "\t\tmember", member
+            print "\tGETTING MEMBERS"
+            print "\t\tmember", member
             # get local filename
             filename = cachePath + makeFilename(str(member))
-            # print "\t\tfilename", filename
+            print "\t\tfilename", filename
             # try to get the local html
             try:
                 html = getHtmlFromFilename(filename)
+                # get list of bands
+                bands = getTableBands(html)
+                bands_token = [tokenize(b) for b in bands]
+                # get phrases from wikipedia text
+                phrases = getTextFromHtml(html)
+                # for each phrase,
+                for phrase in phrases:
+                    # tokenize
+                    tokens = tokenize(phrase.text)
+                    # find positions of <member> + <bands>
+                    # ...
+                    # add binary relations
+                    # ...
             except:
                 pass
-            # get list of bands
-            bands = getTableBands(html)
-            bands_token = [tokenize(b) for b in bands]
-            # print "\t\tbands", bands
-            # build binary relations
-            # ...
+            print "\t\tbands", bands
 
     # save binary relationship extractor
     # ...
@@ -261,6 +182,28 @@ def main():
     user_input = ''
     while user_input != "quit":
         user_input = raw_input("Find: ")
+        if user_input.startswith("person "):
+            member = user_input.split("person ")[1]
+            filename = cachePath + makeFilename(member)
+            try:
+                html = getHtmlFromFilename(filename)
+                # run binary extractor
+                # ...
+                # return bands
+            except:
+                print "Could not find {}".format(filename)
+        elif user_input.startswith("band "):
+            band = user_input.split("band ")[1]
+            filename = cachePath + makeFilename(band)
+            try:
+                html = getHtmlFromFilename(filename)
+                # run binary extractor
+                # ...
+                # return members
+            except:
+                print "Could not find {}".format(filename)
+        else:
+            pass
 
     sys.exit("Bye!")
 
