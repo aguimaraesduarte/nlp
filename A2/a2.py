@@ -209,24 +209,24 @@ def main():
         ner = named_entity_extractor('/Users/aduarte/Desktop/MITIE/MITIE-models/english/ner_model.dat')
         trainer_rel = binary_relation_detector_trainer('people.person.band.membership', ner)
         
+    if TRAIN_NER or TRAIN_REL:
+        # iterate through each band page saved locally
+        for band in GLOBAL_BANDS:
+            band_token = tokenize(band)
+            # read html from local file
+            filename = cachePath + makeFilename(band)
+            members = extract_from_filename(filename, "band", "person", trainer_ner, TRAIN_NER, trainer_rel, TRAIN_REL, band_token)
 
-    # iterate through each band page saved locally
-    for band in GLOBAL_BANDS:
-        band_token = tokenize(band)
-        # read html from local file
-        filename = cachePath + makeFilename(band)
-        members = extract_from_filename(filename, "band", "person", trainer_ner, TRAIN_NER, trainer_rel, TRAIN_REL, band_token)
-
-        # iterate through each member page saved locally
-        for member in members:
-            member_token = tokenize(member)
-            # get local filename
-            filename = cachePath + makeFilename(str(member))
-            # try to get the local html
-            try:
-                extract_from_filename(filename, "person", "band", trainer_ner, TRAIN_NER, trainer_rel, TRAIN_rel, member_token)
-            except:
-                pass
+            # iterate through each member page saved locally
+            for member in members:
+                member_token = tokenize(member)
+                # get local filename
+                filename = cachePath + makeFilename(str(member))
+                # try to get the local html
+                try:
+                    extract_from_filename(filename, "person", "band", trainer_ner, TRAIN_NER, trainer_rel, TRAIN_rel, member_token)
+                except:
+                    pass
 
     if TRAIN_NER:
         print "Training new NER model..."
@@ -267,67 +267,66 @@ def main():
             filename = cachePath + makeFilename(member)
             try:
                 html = getHtmlFromFilename(filename)
+                try:
+                    # get phrases from wikipedia text
+                    phrases = getTextFromHtml(html)
+                    l_names = []
+                    for phrase in phrases:
+                        # tokenize
+                        tokens = tokenize(phrase.text)
+                        if len(tokens) > 0:
+                            # run ner
+                            entities = ner_model.extract_entities(tokens)
+                            adjacent_entities = [(entities[i][0], entities[i+1][0]) for i in xrange(len(entities)-1)]
+                            adjacent_entities += [(r, l) for (l, r) in adjacent_entities]
+                            # run rel extractor
+                            for i, j in adjacent_entities:
+                                relation = ner_model.extract_binary_relation(tokens, i, j)
+                                score = rel_model(relation)
+                                i_name = ' '.join(tokens[i].decode() for i in i)
+                                j_name = ' '.join(tokens[i].decode() for i in j)
+                                if i_name == member and i_name != j_name and j_name not in l_names and abs(score) > 0.25:
+                                    print i_name, "in band", j_name, "(", score, ")"
+                                    l_names.append(j_name)
+                    if len(l_names) == 0:
+                        print "Could not find anything."
+                except:
+                    print "Failed."
             except:
                 print "Could not find {}.".format(filename)
-                pass
-            try:
-                # get phrases from wikipedia text
-                phrases = getTextFromHtml(html)
-                l_names = []
-                for phrase in phrases:
-                    # tokenize
-                    tokens = tokenize(phrase.text)
-                    if len(tokens) > 0:
-                        # run ner
-                        entities = ner_model.extract_entities(tokens)
-                        adjacent_entities = [(entities[i][0], entities[i+1][0]) for i in xrange(len(entities)-1)]
-                        adjacent_entities += [(r, l) for (l, r) in adjacent_entities]
-                        # run rel extractor
-                        for i, j in adjacent_entities:
-                            relation = ner_model.extract_binary_relation(tokens, i, j)
-                            score = rel_model(relation)
-                            i_name = ' '.join(tokens[i].decode() for i in i)
-                            j_name = ' '.join(tokens[i].decode() for i in j)
-                            if i_name == member and i_name != j_name and j_name not in l_names and abs(score) > 0.25:
-                                print i_name, "in band", j_name, "(", score, ")"
-                                l_names.append(j_name)
-                if len(l_names) == 0:
-                    print "Could not find anything."
-            except:
-                print "Failed."
         elif user_input.startswith("band "):
             band = user_input.split("band ")[1]
             filename = cachePath + makeFilename(band)
             try:
                 html = getHtmlFromFilename(filename)
+                try:
+                    # get phrases from wikipedia text
+                    phrases = getTextFromHtml(html)
+                    l_names = []
+                    for phrase in phrases:
+                        # tokenize
+                        tokens = tokenize(phrase.text)
+                        if len(tokens) > 0:
+                            # run ner
+                            entities = ner_model.extract_entities(tokens)
+                            adjacent_entities = [(entities[i][0], entities[i+1][0]) for i in xrange(len(entities)-1)]
+                            adjacent_entities += [(r, l) for (l, r) in adjacent_entities]
+                            # run rel extractor
+                            for i, j in adjacent_entities:
+                                relation = ner_model.extract_binary_relation(tokens, i, j)
+                                score = rel_model(relation)
+                                i_name = ' '.join(tokens[i].decode() for i in i)
+                                j_name = ' '.join(tokens[i].decode() for i in j)
+                                if i_name == band and i_name != j_name and j_name not in l_names and abs(score) > 0.25:
+                                    print i_name, "has member", j_name, "(", score, ")"
+                                    l_names.append(j_name)
+                    if len(l_names) == 0:
+                        print "Could not find anything."
+                except:
+                    print "Failed."
             except:
                 print "Could not find {}.".format(filename)
                 pass
-            try:
-                # get phrases from wikipedia text
-                phrases = getTextFromHtml(html)
-                l_names = []
-                for phrase in phrases:
-                    # tokenize
-                    tokens = tokenize(phrase.text)
-                    if len(tokens) > 0:
-                        # run ner
-                        entities = ner_model.extract_entities(tokens)
-                        adjacent_entities = [(entities[i][0], entities[i+1][0]) for i in xrange(len(entities)-1)]
-                        adjacent_entities += [(r, l) for (l, r) in adjacent_entities]
-                        # run rel extractor
-                        for i, j in adjacent_entities:
-                            relation = ner_model.extract_binary_relation(tokens, i, j)
-                            score = rel_model(relation)
-                            i_name = ' '.join(tokens[i].decode() for i in i)
-                            j_name = ' '.join(tokens[i].decode() for i in j)
-                            if i_name == band and i_name != j_name and j_name not in l_names and abs(score) > 0.25:
-                                print i_name, "has member", j_name, "(", score, ")"
-                                l_names.append(j_name)
-                if len(l_names) == 0:
-                    print "Could not find anything."
-            except:
-                print "Failed."
         elif user_input == "quit":
             sys.exit("Bye")
         else:
