@@ -119,7 +119,7 @@ def main():
     # TRAINING
 
     # create ner model and binary relationship extractor
-    # ...
+    trainer = ner_trainer('/Users/aduarte/Desktop/MITIE/MITIE-models/english/total_word_feature_extractor.dat')
 
     # iterate through each band page saved locally
     for band in GLOBAL_BANDS:
@@ -139,12 +139,50 @@ def main():
         phrases = getTextFromHtml(html)
         # for each phrase,
         for phrase in phrases:
+            band_indices = []
             # tokenize
             tokens = tokenize(phrase.text)
-            # find positions of <band> + <members>
-            # ...
-            # add binary relations
-            # ...
+            sample = ner_training_instance(tokens)
+            if len(tokens) > 0:
+                # find positions of <band>
+                indices = [idx for idx, tok in enumerate(tokens) if tok in band_token]
+                breaks = [pos1+1 for pos1, pos2 in zip(indices, indices[1:]) if pos2-pos1 != 1]
+                if len(indices)>0:
+                    breaks.append(indices[-1])
+                k = 0
+                for b in breaks:
+                    tup = [n for n in indices[k:] if n <= b]
+                    if len(tup) > 1:
+                        band_indices.append((tup[0], tup[-1]+1))
+                    k += len(tup)
+                #print [tokens[j[0]:j[1]] for j in band_indices]
+                for i in band_indices:
+                    print "adding BAND xrange({}, {}) => ({}, {})".format(i[0], i[1], tokens[i[0]], tokens[i[1]-1])
+                    sample.add_entity(xrange(i[0], i[1]), "band")
+                    trainer.add(sample)
+                # find positions of <members>
+                for member in members:
+                    member_indices = []
+                    member_token = tokenize(member)
+                    indices = [idx for idx, tok in enumerate(tokens) if tok in member_token]
+                    breaks = [pos1+1 for pos1, pos2 in zip(indices, indices[1:]) if pos2-pos1 != 1]
+                    if len(indices)>0:
+                        breaks.append(indices[-1])
+                    k = 0
+                    for b in breaks:
+                        tup = [n for n in indices[k:] if n <= b]
+                        if len(tup) > 1:
+                            member_indices.append((tup[0], tup[-1]+1))
+                        k += len(tup)
+                    #print [tokens[j[0]:j[1]] for j in member_indices]
+                    # add binary relations
+                    for j in member_indices:
+                        try:
+                            print "adding MEMBER xrange({}, {}) => ({}, {})".format(j[0], j[1], tokens[j[0]], tokens[j[1]-1])
+                            sample.add_entity(xrange(j[0], j[1]), "member")
+                            trainer.add(sample)
+                        except:
+                            pass
         # iterate through each member page saved locally
         for member in members:
             member_token = tokenize(member)
@@ -164,12 +202,50 @@ def main():
                 phrases = getTextFromHtml(html)
                 # for each phrase,
                 for phrase in phrases:
+                    member_indices = []
                     # tokenize
                     tokens = tokenize(phrase.text)
-                    # find positions of <member> + <bands>
-                    # ...
-                    # add binary relations
-                    # ...
+                    sample = ner_training_instance(tokens)
+                    if len(tokens) > 0:
+                        # find positions of <member>
+                        indices = [idx for idx, tok in enumerate(tokens) if tok in member_token]
+                        breaks = [pos1+1 for pos1, pos2 in zip(indices, indices[1:]) if pos2-pos1 != 1]
+                        if len(indices)>0:
+                            breaks.append(indices[-1])
+                        k = 0
+                        for b in breaks:
+                            tup = [n for n in indices[k:] if n <= b]
+                            if len(tup) > 1:
+                                member_indices.append((tup[0], tup[-1]+1))
+                            k += len(tup)
+                        #print [tokens[j[0]:j[1]] for j in member_indices]
+                        for i in member_indices:
+                            print "adding MEMBER xrange({}, {}) => ({}, {})".format(i[0], i[1], tokens[i[0]], tokens[i[1]-1])
+                            sample.add_entity(xrange(i[0], i[1]), "member")
+                            trainer.add(sample)
+                        # find positions of <bands>
+                        for band in bands:
+                            band_indices = []
+                            band_token = tokenize(band)
+                            indices = [idx for idx, tok in enumerate(tokens) if tok in band_token]
+                            breaks = [pos1+1 for pos1, pos2 in zip(indices, indices[1:]) if pos2-pos1 != 1]
+                            if len(indices)>0:
+                                breaks.append(indices[-1])
+                            k = 0
+                            for b in breaks:
+                                tup = [n for n in indices[k:] if n <= b]
+                                if len(tup) > 1:
+                                    band_indices.append((tup[0], tup[-1]+1))
+                                k += len(tup)
+                            #print [tokens[j[0]:j[1]] for j in band_indices]
+                            # add binary relations
+                            for j in band_indices:
+                                try:
+                                    print "adding BAND xrange({}, {}) => ({}, {})".format(j[0], j[1], tokens[j[0]], tokens[j[1]-1])
+                                    sample.add_entity(xrange(j[0], j[1]), "band")
+                                    trainer.add(sample)
+                                except:
+                                    pass
             except:
                 pass
             print "\t\tbands", bands
