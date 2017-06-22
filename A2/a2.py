@@ -23,8 +23,9 @@ GLOBAL_BANDS = ["10,000 Maniacs",
                 "Throwing Muses",
                 "Tom Tom Club"]
 
-TRAIN_NER = True
-TRAIN_REL = True
+TRAIN_NER = False
+TRAIN_REL = False
+SCORE_THRESHOLD = 0.25
 
 NER_MODEL_NAME = "ner_person_band_member.dat"
 REL_MODEL_NAME = "rel_person_band_member.svm"
@@ -216,19 +217,26 @@ def extract_from_html(cpath_, grpname_, grp_, grp2_, trainer_ner_, cond_NER_, tr
     return grp
 
 
-def print_relations(adj_ent_, ner_model_, rel_model_, tokens_, grp_, l_names_):
+def print_relations(adj_ent_, ner_model_, rel_model_, tokens_, grp_, grpname_, l_names_, thresh_):
     for i, j in adj_ent_:
         relation = ner_model_.extract_binary_relation(tokens_, i, j)
         score = rel_model_(relation)
         i_name = ' '.join(tokens_[i].decode() for i in i)
         j_name = ' '.join(tokens_[i].decode() for i in j)
+        if grpname_ == "member":
+            score = -score
 
-        if i_name == grp_ and i_name != j_name and j_name not in l_names_ and abs(score) > 0.25:
-            print i_name, "in band", j_name, "(", score, ")"
+        if i_name == grp_ and i_name != j_name and j_name not in l_names_ and score > thresh_:
+            if grpname_ == "band":
+                print i_name, "has member", j_name, "(", score, ")"
+
+            else:
+                print i_name, "in band", j_name, "(", score, ")"
+
             l_names_.append(j_name)
 
 
-def find_from_html(html_, ner_model_, rel_model_, grp_):
+def find_from_html(html_, ner_model_, rel_model_, grp_, grpname_, thresh_):
     # get phrases from wikipedia text
     phrases = getTextFromHtml(html_)
     l_names = []
@@ -242,19 +250,19 @@ def find_from_html(html_, ner_model_, rel_model_, grp_):
             adjacent_entities = [(entities[i][0], entities[i+1][0]) for i in xrange(len(entities)-1)]
             adjacent_entities += [(r, l) for (l, r) in adjacent_entities]
             # run rel extractor
-            print_relations(adjacent_entities, ner_model_, rel_model_, tokens, grp_, l_names)
+            print_relations(adjacent_entities, ner_model_, rel_model_, tokens, grp_, grpname_, l_names, thresh_)
 
     if len(l_names) == 0:
         print "Could not find anything."
 
 
-def try_extract(grp_, cpath_, ner_model_, rel_model_):
+def try_extract(grp_, grpname_, cpath_, ner_model_, rel_model_, thresh_):
     filename = cpath_ + makeFilename(grp_)
     try:
         html = getHtmlFromFilename(filename)
 
         try:
-            find_from_html(html, ner_model_, rel_model_, grp_)
+            find_from_html(html, ner_model_, rel_model_, grp_, grpname_, thresh_)
 
         except:
             print "Failed."
@@ -318,7 +326,7 @@ def training(cond_NER_, cond_REL_, mpath_, bands_list_, cpath_):
     return trainer_ner, trainer_rel
 
 
-def testing(cpath_, ner_model_, rel_model_):
+def testing(cpath_, ner_model_, rel_model_, thresh_):
     # ask user for input
     user_input = ''
 
@@ -327,11 +335,11 @@ def testing(cpath_, ner_model_, rel_model_):
 
         if user_input.startswith("person "):
             member = user_input.split("person ")[1]
-            try_extract(member, cpath_, ner_model_, rel_model_)
+            try_extract(member, "member", cpath_, ner_model_, rel_model_, thresh_)
 
         elif user_input.startswith("band "):
             band = user_input.split("band ")[1]
-            try_extract(band, cpath_, ner_model_, rel_model_)
+            try_extract(band, "band", cpath_, ner_model_, rel_model_, thresh_)
 
         elif user_input == "quit":
             sys.exit("Bye")
@@ -361,7 +369,7 @@ def main():
     rel_model = train_load_model(TRAIN_REL, "REL", trainer_rel, binary_relation_detector, REL_MODEL_NAME)
 
     # TESTING
-    testing(CACHE_PATH, ner_model, rel_model)
+    testing(CACHE_PATH, ner_model, rel_model, SCORE_THRESHOLD)
 
 if __name__ == "__main__":
     main()
