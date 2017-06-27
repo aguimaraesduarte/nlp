@@ -8,35 +8,43 @@ if __name__ == '__main__':
 	reload(sys)
 	sys.setdefaultencoding('utf8')
 
-	from extractor import extractor
+	from extractor1 import extractor
 
-	trainerTester = extractor("https://en.wikipedia.org/wiki/{}",
-		                      ["10,000 Maniacs",
-							   "Belly",
-							   "Belly (band)",
-							   "Black Star",
-							   "Black Star (rap duo)",
-							   "Bob Marley and the Wailers",
-							   "The Breeders",
-							   "Lupe Fiasco",
-							   "Run the Jewels",
-							   "Talking Heads",
-							   "Throwing Muses",
-							   "Tom Tom Club"],
-							  True,
-							  True,
-							  0.0,
-							  "ner_band_member.dat",
-							  "rel_band_to_member.svm",
-							  "rel_member_to_band.svm",
-							  "/Users/aduarte/Desktop/MITIE/")
+	wiki_url_ = "https://en.wikipedia.org/wiki/{}"
+	bands_list_ = ["10,000 Maniacs",
+				   "Belly",
+				   "Belly (band)",
+				   "Black Star",
+				   "Black Star (rap duo)",
+				   "Bob Marley and the Wailers",
+				   "The Breeders",
+				   "Lupe Fiasco",
+				   "Run the Jewels",
+				   "Talking Heads",
+				   "Throwing Muses",
+				   "Tom Tom Club"]
+	train_ner_ = True
+	train_rel_ = True
+	threshold_ = 0.0
+	ner_model_name_ = "ner_band_member_one.dat"
+	rel_model_name_ = "rel_band_member_one.svm"
+	mitie_path_ = "/Users/aduarte/Desktop/MITIE/"
+
+	trainerTester = extractor(wiki_url_ = wiki_url_,
+		                      bands_list_ = bands_list_,
+							  train_ner_ = train_ner_,
+							  train_rel_ = train_rel_,
+							  threshold_ = threshold_,
+							  ner_model_name_ = ner_model_name_,
+							  rel_model_name_ = rel_model_name_,
+							  mitie_path_ = mitie_path_)
 
 	sys.path.append(trainerTester.MITIE_PATH + 'mitielib')
 	from mitie import named_entity_extractor, binary_relation_detector
 	
 	cache_path = trainerTester.getCachePath()
-	trainer_ner, trainer_rel_b2m, trainer_rel_m2b = trainerTester.training(cache_path)
-	ner_model, rel_model_b2m, rel_model_m2b = trainerTester.modelLoading(trainer_ner, named_entity_extractor, trainer_rel_b2m, trainer_rel_m2b, binary_relation_detector)
-	trainerTester.testing(cache_path, ner_model, rel_model_b2m, rel_model_m2b)
+	trainer_ner, trainer_rel = trainerTester.training(cache_path)
+	ner_model, rel_model = trainerTester.modelLoading(trainer_ner, named_entity_extractor, trainer_rel, binary_relation_detector)
+	trainerTester.testing(cache_path, ner_model, rel_model)
 
-	#trainerTester.main()
+	# trainerTester.main()

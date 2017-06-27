@@ -25,10 +25,11 @@ GLOBAL_BANDS = ["10,000 Maniacs",
 
 TRAIN_NER = False
 TRAIN_REL = False
-SCORE_THRESHOLD = 0.25
+SCORE_THRESHOLD = 0.0
 
-NER_MODEL_NAME = "ner_person_band_member.dat"
-REL_MODEL_NAME = "rel_person_band_member.svm"
+NER_MODEL_NAME = "ner_band_member.dat"
+REL_B2M_MODEL_NAME = "rel_band_to_member.svm"
+REL_M2B_MODEL_NAME = "rel_member_to_band.svm"
 
 
 def parseArgs():
@@ -140,7 +141,7 @@ def create_tuple_indices(breaks_, indices_, ner_indices_, grp_token_):
 def add_ner_entities(indices_, tokens_, sample_, trainer_ner_, rel_):
     for j in indices_:
         try:
-            print "adding {} xrange({}, {}) => ({}, {})".format(rel_, j[0], j[1], tokens_[j[0]], tokens_[j[1]-1])
+            print "adding {} xrange({}, {}) => ({})".format(rel_, j[0], j[1], tokens_[j[0]:j[1]])
             sample_.add_entity(xrange(j[0], j[1]), rel_)
             trainer_ner_.add(sample_)
 
@@ -148,7 +149,7 @@ def add_ner_entities(indices_, tokens_, sample_, trainer_ner_, rel_):
             pass
 
 
-def find_positions(group_, tokens_, sample_, trainer_ner_, cond_NER_, trainer_rel_, cond_REL_, grp2_indices_, rel_):
+def find_positions(group_, tokens_, sample_, trainer_ner_, cond_NER_, trainer_rel_b2m_, trainer_rel_m2b_, cond_REL_, grp2_indices_, rel_):
     for grp in group_:
         grp_indices = []
         grp_token = tokenize(grp)
@@ -168,14 +169,23 @@ def find_positions(group_, tokens_, sample_, trainer_ner_, cond_NER_, trainer_re
             for i in grp2_indices_:
                 for j in grp_indices:
                     try:
-                        trainer_rel_.add_positive_binary_relation(tokens_, xrange(i[0], i[1]), xrange(j[0], j[1]))
-                        trainer_rel_.add_negative_binary_relation(tokens_, xrange(j[0], j[1]), xrange(i[0], i[1]))
+                        if rel_ == "band":
+                            # add positive to band=>member
+                            # add negative to member=>band
+                            trainer_rel_b2m_.add_positive_binary_relation(tokens_, xrange(i[0], i[1]), xrange(j[0], j[1]))
+                            trainer_rel_m2b_.add_negative_binary_relation(tokens_, xrange(j[0], j[1]), xrange(i[0], i[1]))
+
+                        else:
+                            # add positive to member=>band
+                            # add negative to band=>member
+                            trainer_rel_m2b_.add_positive_binary_relation(tokens_, xrange(i[0], i[1]), xrange(j[0], j[1]))
+                            trainer_rel_b2m_.add_negative_binary_relation(tokens_, xrange(j[0], j[1]), xrange(i[0], i[1]))
 
                     except:
                         pass
 
 
-def iterate_phrases(phrases_, rel_, rel2_, trainer_ner_, cond_NER_, trainer_rel_, cond_REL_, grp2_, grp_token_):
+def iterate_phrases(phrases_, rel_, rel2_, trainer_ner_, cond_NER_, trainer_rel_b2m_, trainer_rel_m2b_, cond_REL_, grp2_, grp_token_):
     for phrase in phrases_:
         grp_indices = []
         # tokenize
@@ -197,10 +207,10 @@ def iterate_phrases(phrases_, rel_, rel2_, trainer_ner_, cond_NER_, trainer_rel_
                 add_ner_entities(grp_indices, tokens, sample, trainer_ner_, rel_)
 
             # find positions of <rel2_>
-            find_positions(grp2_, tokens, sample, trainer_ner_, cond_NER_, trainer_rel_, cond_REL_, grp_indices, rel2_)
+            find_positions(grp2_, tokens, sample, trainer_ner_, cond_NER_, trainer_rel_b2m_, trainer_rel_m2b_, cond_REL_, grp_indices, rel2_)
 
 
-def extract_from_html(cpath_, grpname_, grp_, grp2_, trainer_ner_, cond_NER_, trainer_rel_, cond_REL_):
+def extract_from_html(cpath_, grpname_, grp_, grp2_, trainer_ner_, cond_NER_, trainer_rel_b2m_, trainer_rel_m2b_, cond_REL_):
     # tokenize group name
     grp_token = tokenize(grpname_)
     # make filename
@@ -212,7 +222,7 @@ def extract_from_html(cpath_, grpname_, grp_, grp2_, trainer_ner_, cond_NER_, tr
     # get phrases from wikipedia text
     phrases = getTextFromHtml(html)
     # iterate through phrases
-    iterate_phrases(phrases, grp_, grp2_, trainer_ner_, cond_NER_, trainer_rel_, cond_REL_, grp, grp_token)
+    iterate_phrases(phrases, grp_, grp2_, trainer_ner_, cond_NER_, trainer_rel_b2m_, trainer_rel_m2b_, cond_REL_, grp, grp_token)
     
     return grp
 
@@ -223,8 +233,6 @@ def print_relations(adj_ent_, ner_model_, rel_model_, tokens_, grp_, grpname_, l
         score = rel_model_(relation)
         i_name = ' '.join(tokens_[i].decode() for i in i)
         j_name = ' '.join(tokens_[i].decode() for i in j)
-        if grpname_ == "member":
-            score = -score
 
         if i_name == grp_ and i_name != j_name and j_name not in l_names_ and score > thresh_:
             if grpname_ == "band":
@@ -295,15 +303,15 @@ def train_load_model(condition_, type_, trainer_, fun_model_, save_filename):
     return model
 
 
-def model_training(bands_list_, cpath_, trainer_ner_, cond_NER_, trainer_rel_, cond_REL_):
+def model_training(bands_list_, cpath_, trainer_ner_, cond_NER_, trainer_rel_b2m_, trainer_rel_m2b_, cond_REL_):
     # iterate through each band page saved locally
     for band in bands_list_:
-        members = extract_from_html(cpath_, band, "band", "person", trainer_ner_, cond_NER_, trainer_rel_, cond_REL_)
+        members = extract_from_html(cpath_, band, "band", "person", trainer_ner_, cond_NER_, trainer_rel_b2m_, trainer_rel_m2b_, cond_REL_)
 
         # iterate through each member page saved locally
         for member in members:
             try:
-                extract_from_html(cpath_, member, "person", "band", trainer_ner_, cond_NER_, trainer_rel_, cond_REL_)
+                extract_from_html(cpath_, member, "person", "band", trainer_ner_, cond_NER_, trainer_rel_b2m_, trainer_rel_m2b_, cond_REL_)
             except:
                 pass
 
@@ -311,22 +319,24 @@ def model_training(bands_list_, cpath_, trainer_ner_, cond_NER_, trainer_rel_, c
 def training(cond_NER_, cond_REL_, mpath_, bands_list_, cpath_):
     # create ner model and binary relationship extractor
     trainer_ner = ""
-    trainer_rel = ""
+    trainer_rel_b2m = ""
+    trainer_rel_m2b = ""
 
     if cond_NER_:
         trainer_ner = ner_trainer(mpath_ + 'MITIE-models/english/total_word_feature_extractor.dat')
 
     if cond_REL_:
         ner = named_entity_extractor(mpath_ + 'MITIE-models/english/ner_model.dat')
-        trainer_rel = binary_relation_detector_trainer('people.person.band.membership', ner)
+        trainer_rel_b2m = binary_relation_detector_trainer('band.to.member', ner)
+        trainer_rel_m2b = binary_relation_detector_trainer('member.to.band', ner)
         
     if cond_NER_ or cond_REL_:
-        model_training(bands_list_, cpath_, trainer_ner, cond_NER_, trainer_rel, cond_REL_)
+        model_training(bands_list_, cpath_, trainer_ner, cond_NER_, trainer_rel_b2m, trainer_rel_m2b, cond_REL_)
 
-    return trainer_ner, trainer_rel
+    return trainer_ner, trainer_rel_b2m, trainer_rel_m2b
 
 
-def testing(cpath_, ner_model_, rel_model_, thresh_):
+def testing(cpath_, ner_model_, rel_model_b2m_, rel_model_m2b_, thresh_):
     # ask user for input
     user_input = ''
 
@@ -335,11 +345,11 @@ def testing(cpath_, ner_model_, rel_model_, thresh_):
 
         if user_input.startswith("person "):
             member = user_input.split("person ")[1]
-            try_extract(member, "member", cpath_, ner_model_, rel_model_, thresh_)
+            try_extract(member, "member", cpath_, ner_model_, rel_model_m2b_, thresh_)
 
         elif user_input.startswith("band "):
             band = user_input.split("band ")[1]
-            try_extract(band, "band", cpath_, ner_model_, rel_model_, thresh_)
+            try_extract(band, "band", cpath_, ner_model_, rel_model_b2m_, thresh_)
 
         elif user_input == "quit":
             sys.exit("Bye")
@@ -362,14 +372,15 @@ def main():
     CACHE_PATH = getCachePath(GLOBAL_BANDS)
 
     # TRAINING
-    trainer_ner, trainer_rel = training(TRAIN_NER, TRAIN_REL, MITIE_PATH, GLOBAL_BANDS, CACHE_PATH)
+    trainer_ner, trainer_rel_b2m, trainer_rel_m2b = training(TRAIN_NER, TRAIN_REL, MITIE_PATH, GLOBAL_BANDS, CACHE_PATH)
 
     # train/load model
     ner_model = train_load_model(TRAIN_NER, "NER", trainer_ner, named_entity_extractor, NER_MODEL_NAME)
-    rel_model = train_load_model(TRAIN_REL, "REL", trainer_rel, binary_relation_detector, REL_MODEL_NAME)
+    rel_model_b2m = train_load_model(TRAIN_REL, "REL", trainer_rel_b2m, binary_relation_detector, REL_B2M_MODEL_NAME)
+    rel_model_m2b = train_load_model(TRAIN_REL, "REL", trainer_rel_m2b, binary_relation_detector, REL_M2B_MODEL_NAME)
 
     # TESTING
-    testing(CACHE_PATH, ner_model, rel_model, SCORE_THRESHOLD)
+    testing(CACHE_PATH, ner_model, rel_model_b2m, rel_model_m2b, SCORE_THRESHOLD)
 
 if __name__ == "__main__":
     main()
