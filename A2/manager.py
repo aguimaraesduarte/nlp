@@ -8,7 +8,7 @@ if __name__ == '__main__':
 	reload(sys)
 	sys.setdefaultencoding('utf8')
 
-	from extractor1 import extractor
+	from extractor import extractor
 
 	wiki_url_ = "https://en.wikipedia.org/wiki/{}"
 	bands_list_ = ["10,000 Maniacs",
