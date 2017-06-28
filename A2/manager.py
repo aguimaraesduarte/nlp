@@ -23,11 +23,11 @@ if __name__ == '__main__':
 				   "Talking Heads",
 				   "Throwing Muses",
 				   "Tom Tom Club"]
-	train_ner_ = True
+	train_ner_ = False
 	train_rel_ = False
 	threshold_ = 0.0
-	ner_model_name_ = "ner_band_member_good.dat"
-	rel_model_name_ = "rel_band_member_good.svm"
+	ner_model_name_ = 'model_ner.dat'
+	rel_model_name_ = 'model_rel.svm'
 	mitie_path_ = "/Users/aduarte/Desktop/MITIE/"
 
 	trainerTester = extractor(wiki_url_ = wiki_url_,

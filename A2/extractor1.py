@@ -471,7 +471,7 @@ class extractor(object):
 				trainer_rel = binary_relation_detector_trainer('rel.band.member', ner)
 
 			except:
-				sys.exit("Error! NER was not found. Run again with the training NER option set to True.")
+				sys.exit("Error! NER was not found. Run again with the training NER option set to True and REL to False.")
 			
 		if self.TRAIN_NER or self.TRAIN_REL:
 			print """
